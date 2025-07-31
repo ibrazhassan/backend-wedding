@@ -1,24 +1,39 @@
-// server.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const app = express();
-const PORT = process.env.PORT || 3000;
+const { createClient } = require('@supabase/supabase-js');
 
+const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.post('/api/save-field', (req, res) => {
-  const { field, value, timestamp } = req.body;
-  console.log(`Received: ${field} = ${value} at ${timestamp}`);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-  // For now, just send back success
-  res.status(200).json({ message: 'Saved successfully' });
+app.post('/api/save-field', async (req, res) => {
+  const { field, value, timestamp } = req.body;
+  console.log(`📝 Field: ${field} | Value: ${value} | Time: ${timestamp}`);
+
+  try {
+    const { error } = await supabase
+      .from('form_data')
+      .insert([{ field, value, timestamp }]);
+
+    if (error) {
+      console.error('❌ Supabase Error:', error.message);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.status(200).json({ message: 'Saved to DB' });
+  } catch (err) {
+    console.error('❌ Server Error:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 app.get('/', (req, res) => {
-  res.send('RSVP Backend is running');
+  res.send('✅ RSVP backend is live');
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(process.env.PORT || 3000, () => {
+  console.log('🚀 Server running');
 });
